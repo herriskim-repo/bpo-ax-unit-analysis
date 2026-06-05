@@ -11,35 +11,68 @@ labor_cost_ratio = labor_cost / revenue
 62% 이하
 """
 
-import pandas as pd
+from collections import defaultdict
 
 
-def calculate_labor_ratio(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    인건비율 계산
-    """
-
-    df["labor_ratio"] = df["labor_cost"] / df["revenue"]
-
-    return df
+KPI_THRESHOLD = 0.62
 
 
-def summarize_by_unit(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    UNIT별 KPI 요약
-    """
+def calculate_labor_ratio(rows: list[dict]) -> list[dict]:
+    """각 row에 labor_ratio 계산 결과를 추가한다."""
 
-    summary = (
-        df.groupby(["division", "unit"])
-        .agg(
-            revenue=("revenue", "sum"),
-            labor_cost=("labor_cost", "sum"),
-            labor_ratio=("labor_ratio", "mean")
-        )
-        .reset_index()
-    )
+    for row in rows:
+        revenue = row.get("revenue", 0)
+        labor_cost = row.get("labor_cost", 0)
 
-    return summary
+        if revenue == 0:
+            labor_ratio = 0
+        else:
+            labor_ratio = labor_cost / revenue
+
+        row["labor_ratio"] = labor_ratio
+
+    return rows
+
+
+def summarize_by_unit(rows: list[dict]) -> list[dict]:
+    """UNIT별 KPI 요약"""
+
+    grouped = defaultdict(lambda: {
+        "division": "",
+        "unit": "",
+        "revenue": 0,
+        "labor_cost": 0,
+    })
+
+    for row in rows:
+        key = (row["division"], row["unit"])
+
+        grouped[key]["division"] = row["division"]
+        grouped[key]["unit"] = row["unit"]
+        grouped[key]["revenue"] += row["revenue"]
+        grouped[key]["labor_cost"] += row["labor_cost"]
+
+    summary_rows = []
+
+    for value in grouped.values():
+        revenue = value["revenue"]
+        labor_cost = value["labor_cost"]
+
+        if revenue == 0:
+            labor_ratio = 0
+        else:
+            labor_ratio = labor_cost / revenue
+
+        summary_rows.append({
+            "division": value["division"],
+            "unit": value["unit"],
+            "revenue": revenue,
+            "labor_cost": labor_cost,
+            "labor_ratio": labor_ratio,
+            "status": "RISK" if labor_ratio > KPI_THRESHOLD else "NORMAL",
+        })
+
+    return summary_rows
 
 
 if __name__ == "__main__":
