@@ -5,27 +5,24 @@ detect_risk_units.py
 KPI 기준(62%)을 초과하는 위험 UNIT 탐지.
 """
 
-import pandas as pd
-
-
 KPI_THRESHOLD = 0.62
 
 
-def detect_risk_units(summary_df: pd.DataFrame) -> pd.DataFrame:
-    """
-    KPI 초과 UNIT 탐지
-    """
+def detect_risk_units(summary_rows: list[dict]) -> list[dict]:
+    """KPI 초과 UNIT 탐지"""
 
-    risk_df = summary_df[
-        summary_df["labor_ratio"] > KPI_THRESHOLD
-    ].copy()
+    risk_rows = []
 
-    risk_df = risk_df.sort_values(
-        by="labor_ratio",
-        ascending=False
+    for row in summary_rows:
+        if row["labor_ratio"] > KPI_THRESHOLD:
+            risk_rows.append(row)
+
+    risk_rows.sort(
+        key=lambda x: x["labor_ratio"],
+        reverse=True,
     )
 
-    return risk_df
+    return risk_rows
 
 
 if __name__ == "__main__":
